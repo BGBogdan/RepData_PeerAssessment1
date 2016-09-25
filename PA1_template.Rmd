@@ -1,25 +1,141 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
 output: 
-  html_document:
-    keep_md: true
+  html_document: 
+    keep_md: yes
 ---
+Reproducible Research - Course project 1
+=======================================================
+
+###Reading the CSV file
+
+```{r}
+library(dtplyr)
+library(dplyr)
+activity_table <- read.csv("C:/Coursera_stuff/Reproducable Research (Course 5)/Course project 1/activity.csv")
+```
+
+###Q1: What is mean total number of steps taken per day?
+
+Aggregate the steps taken by day:
+```{r}
+steps_byday <- aggregate(steps~date, activity_table, sum, na.rm=TRUE)
+print(head(steps_byday))
+```
+Sum of the steps taken:
+```{r}
+sum(steps_byday$steps)
+```
+
+Histogram of the activity:
+```{r}
+hist(steps_byday$steps, col = "green", breaks = 10)
+```
+
+Mean of the steps by day:
+```{r}
+mean(steps_byday$steps)
+```
+
+Median of the steps by day:
+```{r}
+median(steps_byday$steps)
+```
+
+###Q2: What is the average daily activity pattern?
+
+Aggregate the mean of the steps taken by interval:
+```{r}
+steps_byinterval <- aggregate(steps~interval, activity_table, mean, na.rm=TRUE)
+print(head(steps_byinterval))
+```
+
+Plot the steps
+
+```{r}
+plot(steps_byinterval$steps~steps_byinterval$interval, type = "l")
+```
+
+The interval with the highest number of steps:
+```{r}
+steps_byinterval[which.max(steps_byinterval$steps),]
+``` 
+
+###Q3: Imputing missing values
+
+Calculating the number of missing values
+```{r}
+sum(is.na(activity_table$steps))
+```
+
+Filling in the missing values.
+In order to achieve a reasonable degree of accuracy, all the NA values will be filled in with the average number of steps for that particular day. If the whole day contains only missing values, then all the NAs will be filled in with 0.
+
+```{r}
+activity_better <- data.frame(steps=as.numeric(),
+                              date=as.Date(character()),
+                              interval=as.numeric(),
+                              stringsAsFactors=FALSE)
+dates <- unique(activity_table$date)
+for(i in dates){
+  xtable <- filter(activity_table, date==i)
+  if(sum(complete.cases(xtable$steps))==0){
+    xtable[is.na(xtable)] <- 0
+  }
+  else{
+    xmean <- mean(xtable$steps)
+  xtable[is.na(xtable)] <- xmean}
+  activity_better <- rbind(activity_better, xtable)
+} 
+head(activity_better)
+```
+
+Check that it has no missing values
+
+```{r}
+sum(is.na(activity_better$steps))
+```
+
+Aggregate the steps taken by day in the new table:
+
+```{r}
+steps_byday_better <- aggregate(steps~date, activity_better, sum, na.rm=TRUE)
+print(head(steps_byday_better))
+```
 
 
-## Loading and preprocessing the data
+Histogram of the activity:
+```{r}
+hist(steps_byday_better$steps, col = "green", breaks = 10)
+```
 
+Mean of the steps by day:
+```{r}
+mean(steps_byday_better$steps)
+```
 
+Median of the steps by day:
+```{r}
+median(steps_byday_better$steps)
+```
 
-## What is mean total number of steps taken per day?
+Filling in the NA values had a significant impact on the data. We can see that there are a lot more days in which no activity is recorded, and thus the mean and the median number of steps are reduced noticeably (particularly the mean).
 
+###Q4: Are there differences in activity patterns between weekdays and weekends?
 
+Adding a new column which specifies whether there is a weekday or weekend
+```{r}
+activity_better2 <- mutate(activity_better, date2=date)
+activity_better2$date2 <- weekdays(as.Date(activity_better2$date2))
+activity_better2 <- mutate(activity_better2, Datetype = as.factor(ifelse(date2 == "Saturday" | date2 == "Sunday", "weekend", "weekday")))
+```
 
-## What is the average daily activity pattern?
+Plot the interval activity in the weekend and the weekdays
+```{r}
+library(lattice)
+activity_better2_byinterval <- aggregate(steps ~ interval + Datetype, activity_better2, mean)
+xyplot(steps ~ interval | factor(Datetype), data=activity_better2_byinterval, aspect=1/3, type="l")
+```
 
+Subjects seem to be more active in the early part of the day during the weekdays, particularly around the 800 interval. 
+During weekends we can see that there are larger peaks after the 1000 interval. This could be because people work during the weekdays (hence the increase up until interval 1000 when they reach the office), but then just stay put. Hence the increased activity after interval 1000 during weekends. 
 
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
